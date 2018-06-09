@@ -3,7 +3,7 @@
 使用的时候，主脚本 from glo import *导入该模块，然后初始化init()
 其他脚本只需要 from glo import *导入模块，然后使用get_value即可。
 '''
-
+import os
 def init():
     global _global_dict
     _global_dict = {}
@@ -14,6 +14,8 @@ def init():
     _global_dict['serviceAdmin'] = serviceAdmin()       # 各个服务对应的管理员用户名，比如mysql的root，mssql的sa
     _global_dict['probes'] = _probes()       # 探针
     _global_dict['serviceRE'] = _service()        # 服务名和正则规则
+    _global_dict['getcwd'] = os.getcwd()
+    _global_dict['pwdTxts'] = os.listdir('./password')      # 获取password目录下的所有密码文件名字
 
     _global_dict['pingList'] = []  # 存放存活IP
     _global_dict['ipOpenPort'] = {}     # 存放开放端口
@@ -72,7 +74,12 @@ def _logger():
     import logging
     # 第一步，创建一个logger
     logger = logging.getLogger()
-    logger.setLevel(logging.INFO)  # Log等级总开关
+    logger.setLevel(logging.DEBUG)  # Log等级总开关
+
+    # 第二步，创建一个handler，用于写入日志文件
+    logfile = 'logger.txt'
+    fh = logging.FileHandler(logfile, mode='w')
+    fh.setLevel(logging.DEBUG)  # 输出到file的log等级的开关
 
     # 第三步，再创建一个handler，用于输出到控制台
     ch = logging.StreamHandler()
@@ -80,9 +87,11 @@ def _logger():
 
     # 第四步，定义handler的输出格式
     formatter = logging.Formatter("%(asctime)s - %(filename)s[line:%(lineno)d] - %(levelname)s: %(message)s")
+    fh.setFormatter(formatter)
     ch.setFormatter(formatter)
 
     # 第五步，将logger添加到handler里面
+    logger.addHandler(fh)
     logger.addHandler(ch)
     #print('!!!!!!!!logger')
     # print(logger)
@@ -372,3 +381,5 @@ def serviceAdmin():
 
     }
     return service_admin
+
+

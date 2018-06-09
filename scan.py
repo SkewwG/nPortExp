@@ -2,11 +2,9 @@
 from Libs.glo import *
 init()                          # 全局变量初始化
 from Libs.methods import *      # 导入方法
+from Libs import nmapPortScan
 import sys
 logger = get_value('logger')        # 日志
-from optparse import OptionParser
-from Libs import nmapPortScan, plugins
-
 
 # 解析输入的值，ip，线程数目，扫描端口，扫描服务
 def Parse(Host, Port, threads, attack):
@@ -25,7 +23,7 @@ def Parse(Host, Port, threads, attack):
     #     filesParse()
 
 
-    # # 扫描开放端口
+    # 扫描开放端口
     # if Port:
     #     set_value('Port', Port)  # 端口命令存入全局变量
     #     # portParse()            # 解析端口命令
@@ -52,7 +50,7 @@ if __name__ == '__main__':
     #
     # print(Hosts, Ports, Threads)
 
-    Host = '127.0.0.1 127.0.0.2'    # 123.125.115.111/25
+    Host = '103.78.141.122'    # 123.125.115.111/25       127.0.0.1 127.0.0.2
     # Host = r'C:\Users\Asus\Desktop\py\py3\project\PortExploit\files2.txt'
     Port = '21,22,80,443,3306,1433,3389'   # 21,22,80,443,3306,1433,3389
     threads = 1           # 线程数目

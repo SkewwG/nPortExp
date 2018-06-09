@@ -23,7 +23,7 @@ class portScanByNmap():
 
             for port in tcps.keys():
                 if tcps[port].get("state", None) == "open":
-                    ret[host][tcps[port]["name"]] = port
+                    ret[host][str(port)] = tcps[port]["name"]
                     logger.info("\t[*] {host} port {port} is open \t Service is {name}".format(host=host, port=port,
                                                                                          name=tcps[port]["name"]))
             self.nmapResult.append(ret)
